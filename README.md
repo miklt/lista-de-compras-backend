@@ -102,7 +102,6 @@ API: `http://localhost:8000` | Docs: `http://localhost:8000/docs`
 ### Homologacao com Docker
 
 ```bash
-cp .env.example .env
 docker compose -f docker-compose.homologacao.yml up --build
 ```
 
