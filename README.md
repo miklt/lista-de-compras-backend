@@ -1,93 +1,250 @@
 # lista-de-compras-backend
-Backend do Projeto Lista de Compras para a disciplina PCS3643 - 2018
 
-## Instalação
-Este projeto precisa de python 3 instalado. Nas máquinas do Labprog, o path está em
-```
-'C:\Program Files\Python37\'
-```
+API REST para gerenciamento de listas de compras, construida com FastAPI e Python 3.14.
 
-Clonar o projeto através da linha de comando
-```
-git clone https://github.com/miklt/lista-de-compras-backend.git
-```
+## Tech Stack
 
-Entrar no diretório do Projeto
-```
-cd lista-de-compras-backend
-```
-Instalar o virtualenv, para criar um ambiente python para o projeto 
-```
-pip3 install virtualenv --user
-```
-Verificar se o virtualenv foi instalado e está no seu path
-```
-virtualenv --version
-```
-Se não aparecer, significa que o virtualenv não foi adicionado ao seu path, mas ele deve estar instalado no seu perfil neste path:
-``` 
-'c:\users\aluno\appdata\roaming\python\Python37\Scripts\virtualenv.exe' 
-``` 
- onde aluno é o usuário atual.
+| Componente      | Tecnologia                    |
+| --------------- | ----------------------------- |
+| Framework       | FastAPI                       |
+| Banco de dados  | PostgreSQL 17                 |
+| ORM             | SQLAlchemy 2.0                |
+| Validacao       | Pydantic v2                   |
+| Container       | Docker + Docker Compose       |
+| CI/CD           | GitHub Actions                |
+| Testes          | pytest + pytest-cov           |
+| Lint            | ruff                          |
 
-Então você pode executar o seguinte comando:
-```
-virtualenv -p python3 env
-```
+## Estrutura do Projeto
 
-Ou:
 ```
-c:\users\aluno\appdata\roaming\python\Python37\Scripts\virtualenv.exe -p "c:\Program Files\Python37\python.exe" env 
-```
-(lembre-se de substituir seu nome de usuário por 'aluno' caso seja necessário.
-
-Depois é preciso ativar o ambiente virtual
-Para isso, no windows, execute o seguinte comando:
-```
-env\Scripts\activate.bat
+app/
+  main.py              # Entrada da aplicacao FastAPI
+  config.py            # Configuracoes via variaveis de ambiente
+  database.py          # Conexao com o banco de dados
+  models/              # Modelos SQLAlchemy 2.0
+    item.py
+    item_lista.py
+    lista.py
+    usuario.py
+  schemas/             # Schemas Pydantic (request/response)
+    item.py
+    item_lista.py
+    lista.py
+    usuario.py
+  routes/              # Endpoints da API
+    item.py
+    lista.py
+    usuario.py
+    listagens.py
+tests/
+  test_api.py          # Testes automatizados com cobertura
+docker-compose.yml                 # Producao
+docker-compose.homologacao.yml     # Homologacao
+Dockerfile                         # Imagem Python 3.14
+.github/workflows/ci-cd.yml        # Pipeline CI/CD
 ```
 
-Instalar as dependências via 
+## Endpoints
+
+| Metodo   | URL                    | Descricao                  |
+| -------- | ---------------------- | -------------------------- |
+| `GET`    | `/health`              | Health check               |
+| `GET`    | `/docs`                | Documentacao Swagger       |
+| `POST`   | `/item`                | Criar item                 |
+| `GET`    | `/item/{nome}`         | Buscar item por nome       |
+| `DELETE` | `/item/{nome}`         | Deletar item               |
+| `GET`    | `/itens`               | Listar todos os itens      |
+| `POST`   | `/usuario`             | Criar usuario              |
+| `GET`    | `/usuario/{nome}`      | Buscar usuario por nome    |
+| `GET`    | `/usuarios`            | Listar todos os usuarios   |
+| `POST`   | `/lista`               | Criar lista de compras     |
+| `GET`    | `/lista/{nome}`        | Buscar lista por nome      |
+| `GET`    | `/listas`              | Listar todas as listas     |
+
+---
+
+## Ambientes
+
+### Homologacao
+
+Instancia isolada para testes antes de ir para producao.
+
+| Recurso  | Producao         | Homologacao         |
+| -------- | ---------------- | ------------------- |
+| API      | `:8000`          | `:8001`             |
+| Postgres | `:5432`          | `:5433`             |
+| Database | `lista_compras`  | `lista_compras_hml` |
+| DEBUG    | `false`          | `true`              |
+
+### Producao
+
+| Recurso  | Producao         |
+| -------- | ---------------- |
+| API      | `:8000`          |
+| Postgres | `:5432`          |
+| Database | `lista_compras`  |
+| DEBUG    | `false`          |
+
+---
+
+## Executando Localmente
+
+### Com Docker (recomendado)
+
+```bash
+cp .env.example .env
+docker compose up --build
 ```
-pip3 install -r requirements.txt
+
+API: `http://localhost:8000` | Docs: `http://localhost:8000/docs`
+
+### Homologacao com Docker
+
+```bash
+docker compose -f docker-compose.homologacao.yml up --build
 ```
 
-Executar o projeto via 
+API: `http://localhost:8001` | Docs: `http://localhost:8001/docs`
+
+### Sem Docker
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
+# Ajuste DATABASE_URL no .env para PostgreSQL local
+uvicorn app.main:app --reload
 ```
-python app.py
+
+---
+
+## Testes
+
+### Executar testes
+
+```bash
+source .venv/bin/activate
+pytest tests/ -v
 ```
 
-Para testar, é possível utilizar o Postman ou testar usando o Frontend do projeto.
+### Testes com cobertura
 
-Abrir o Postman
-Criar requisições para teste da API
+```bash
+pytest tests/ -v --cov=app --cov-report=term-missing
+```
 
-POST
-url: http://127.0.0.1:5000/item
+Saida esperada:
 
-Headers
-key:Content-Type
-value:application/json
-Body
-raw
-{"item":"abobora"}
+```
+TOTAL    238      6    97%
+Required test coverage of 70.0% reached. Total coverage: 97.48%
+======================== 19 passed in 0.96s =========================
+```
 
-GET
-url: http://127.0.0.1:5000/item/abobora
+### Gerar relatorio HTML
 
-PUT
-url: http://127.0.0.1:5000/item
+```bash
+pytest tests/ -v --cov=app --cov-report=html
+# Abra htmlcov/index.html no navegador
+```
 
-Headers
-key:Content-Type 
-value:application/json
-Body
-raw
-{"item":"tomates"}
+### Cobertura minima
 
-GET
-url: http://127.0.0.1:5000/itens
+Configurada em `pyproject.toml`:
 
-DELETE
-url: http://127.0.0.1:5000/item/abobora
+```toml
+[tool.coverage.report]
+fail_under = 70
+```
 
+O pipeline CI falha se a cobertura cair abaixo de 70%.
+
+---
+
+## Pipeline CI/CD
+
+`.github/workflows/ci-cd.yml` executa 4 estagios:
+
+```
+test ──> build-and-push ──> deploy-homologacao ──> deploy-producao
+```
+
+| Estagio                | O que faz                                                        |
+| ---------------------- | ---------------------------------------------------------------- |
+| **test**               | ruff lint + pytest com cobertura (PostgreSQL service container)  |
+| **build-and-push**     | Build imagem Docker e push para GitHub Container Registry (GHCR) |
+| **deploy-homologacao** | Deploy via SSH + healthcheck em `:8001`                          |
+| **deploy-producao**    | Deploy via SSH + healthcheck em `:8000` (requer approval)        |
+
+### Triggers
+
+- `push` na branch `main`: executa todo o pipeline (test -> build -> homologacao -> producao)
+- `pull_request` para `main`: executa apenas testes
+
+### Deploy manual de homologacao
+
+```bash
+# No servidor, pos push no main:
+docker compose -f docker-compose.homologacao.yml pull
+docker compose -f docker-compose.homologacao.yml up -d
+```
+
+### Deploy manual de producao
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+---
+
+## Secrets necessarios no GitHub
+
+### Homologacao
+
+| Secret            | Descricao                         |
+| ----------------- | --------------------------------- |
+| `DEPLOY_HOST`     | IP/hostname do servidor           |
+| `DEPLOY_USER`     | Usuario SSH do servidor           |
+| `DEPLOY_KEY`      | Chave SSH privada                 |
+| `DEPLOY_PORT`     | Porta SSH (default: 22)           |
+| `DEPLOY_PATH`     | Caminho do projeto no servidor    |
+
+### Producao
+
+| Secret               | Descricao                           |
+| -------------------- | ----------------------------------- |
+| `DEPLOY_PROD_HOST`   | IP/hostname do servidor producao    |
+| `DEPLOY_PROD_USER`   | Usuario SSH do servidor             |
+| `DEPLOY_PROD_KEY`    | Chave SSH privada                   |
+| `DEPLOY_PROD_PORT`   | Porta SSH (default: 22)             |
+| `DEPLOY_PROD_PATH`   | Caminho do projeto no servidor      |
+
+### Configuracao do Environment no GitHub
+
+Para proteger o deploy de producao com approval manual:
+
+1. Va em **Settings > Environments** no repositorio GitHub
+2. Crie um environment chamado `producao`
+3. Ative **Required reviewers** e adicione quem pode aprovar
+
+---
+
+## Variaveis de Ambiente
+
+| Variavel           | Padrao                                  | Descricao                |
+| ------------------ | --------------------------------------- | ------------------------ |
+| `DATABASE_URL`     | `sqlite:///./banco.db`                  | URL de conexao do banco  |
+| `SECRET_KEY`       | `change-me-in-production`               | Chave da aplicacao       |
+| `DEBUG`            | `false`                                 | Modo debug               |
+| `POSTGRES_USER`    | `lista_user`                            | Usuario PostgreSQL       |
+| `POSTGRES_PASSWORD`| `lista_pass`                            | Senha PostgreSQL         |
+| `POSTGRES_DB`      | `lista_compras`                         | Nome do banco            |
+
+---
+
+## Licenca
+
+MIT

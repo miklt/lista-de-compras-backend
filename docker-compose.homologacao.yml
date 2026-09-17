@@ -1,0 +1,30 @@
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    env_file:
+      - .env.homologacao
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data_hml:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  api:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8001:8000"
+    env_file:
+      - .env.homologacao
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres_data_hml:
